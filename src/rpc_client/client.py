@@ -61,10 +61,12 @@ class Client:
             path = self.get_ipc_path(i)
             try:
                 self._reader, self._writer = await asyncio.open_unix_connection(path)
-            except FileNotFoundError:
+            except (FileNotFoundError, ConnectionRefusedError):
                 continue
             else:
                 break
+        if not self._writer or not self._reader:
+            raise ConnectionError("Failed to connect to IPC")
         await self.handshake()
 
     async def handshake(self):
