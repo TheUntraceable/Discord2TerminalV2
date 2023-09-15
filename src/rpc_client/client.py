@@ -191,6 +191,28 @@ class Client:
             raise ConnectionError("Failed to connect to IPC")
         await self.handshake()
 
+    async def subscribe(self, event_name: str, args: Dict[str, Any]):
+        nonce = os.urandom(32).hex()
+        await self.send_data(
+            OpCode.FRAME,
+            {
+                "cmd": "SUBSCRIBE",
+                "args": args,
+                "evt": event_name.upper(),
+                "nonce": nonce,
+            },
+        )
+        # Not using self.command because we won't be able to specify the evt key
+        # because it is top level, not in the args dict
+        future = asyncio.Future()
+        self._expected[nonce] = future
+        data = await future
+
+        # Yes we could just read_output but that risks a clash with another event being
+        # sent at the same time and unlike some people I don't take stupid risks
+        # that could ruin the entire application
+        logger.debug(f"Subscribed to {event_name} with args {args}. Response: {data}")
+
     async def handshake(self):
         if not self._writer or not self._reader:
             raise RuntimeError("Not connected to IPC")
