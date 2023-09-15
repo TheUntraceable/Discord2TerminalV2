@@ -121,8 +121,10 @@ class Client:
         logger.info(f"Authenticated as {self.user['username']}")
 
     def on_event(self, data):
+        if not data:
+            return
         data = data[8:]
-        logger.debug(f"Preprocessed payload: {data}")
+        logger.debug(f"Received preprocessed data: {data}")
         payload = json.loads(data.decode("utf-8"))
         logger.debug(f"Received payload: {payload}")
         if payload.get("evt") == "DISPATCH":
@@ -164,10 +166,7 @@ class Client:
         if not self._writer:
             raise RuntimeError("Not connected to IPC")
         nonce = os.urandom(32).hex()
-        payload: Dict[str, Any] = {
-            "cmd": cmd,
-            "nonce": nonce
-        }
+        payload: Dict[str, Any] = {"cmd": cmd, "nonce": nonce}
         if args:
             payload["args"] = args
 
@@ -190,7 +189,9 @@ class Client:
         for i in range(10):
             path = self.get_ipc_path(i)
             try:
-                self._reader, self._writer = await asyncio.open_unix_connection(path)
+                self._reader, self._writer = await asyncio.open_unix_connection(
+                    path, limit=1024*1024*10
+                )
             except (FileNotFoundError, ConnectionRefusedError):
                 continue
             else:
