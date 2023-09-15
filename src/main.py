@@ -19,7 +19,17 @@ client = Client(config)
 
 async def main():
     await client.connect()
-    await client.authorize()
+    if not client.access_token:
+        await client.authorize()
+    else:
+        await client.authenticate(client.access_token)
+    guilds = await client.get_guilds()
+    for guild in guilds:
+        guild = await client.get_guild(guild["id"])
+        channels = await client.get_channels(guild["id"])
+        for partial_channel in channels:
+            channel = await client.get_channel(partial_channel["id"])
+            print(channel)
 
 
 if __name__ == "__main__":

@@ -122,6 +122,7 @@ class Client:
 
     def on_event(self, data):
         data = data[8:]
+        logger.debug(f"Preprocessed payload: {data}")
         payload = json.loads(data.decode("utf-8"))
         logger.debug(f"Received payload: {payload}")
         if payload.get("evt") == "DISPATCH":
@@ -200,6 +201,18 @@ class Client:
 
     async def get_guilds(self):
         data = await self.command("GET_GUILDS")
+        return data["data"]["guilds"]
+
+    async def get_guild(self, guild_id: int):
+        data = await self.command("GET_GUILD", {"guild_id": guild_id})
+        return data["data"]
+
+    async def get_channels(self, guild_id: int):
+        data = await self.command("GET_CHANNELS", {"guild_id": guild_id})
+        return data["data"]["channels"]
+
+    async def get_channel(self, channel_id: int):
+        data = await self.command("GET_CHANNEL", {"channel_id": channel_id})
         return data["data"]
 
     async def subscribe(self, event_name: str, args: Dict[str, Any]):
