@@ -159,11 +159,18 @@ class Client:
         await self._writer.drain()
         logger.debug(f"Sent payload: {payload}")
 
-    async def command(self, cmd: str, args: Dict[str, Any]):
+    async def command(self, cmd: str, args: Dict[str, Any] = {}):
         if not self._writer:
             raise RuntimeError("Not connected to IPC")
         nonce = os.urandom(32).hex()
-        await self.send_data(OpCode.FRAME, {"cmd": cmd, "args": args, "nonce": nonce})
+        payload: Dict[str, Any] = {
+            "cmd": cmd,
+            "nonce": nonce
+        }
+        if args:
+            payload["args"] = args
+
+        await self.send_data(OpCode.FRAME, payload)
         future = asyncio.Future()
         self._expected[nonce] = future
         return await future
@@ -190,6 +197,10 @@ class Client:
         if not self._writer or not self._reader:
             raise ConnectionError("Failed to connect to IPC")
         await self.handshake()
+
+    async def get_guilds(self):
+        data = await self.command("GET_GUILDS")
+        return data["data"]
 
     async def subscribe(self, event_name: str, args: Dict[str, Any]):
         nonce = os.urandom(32).hex()
