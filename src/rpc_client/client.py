@@ -1,6 +1,16 @@
 import asyncio
+from collections import defaultdict
 import os
-from typing import Optional
+from typing import (
+    DefaultDict,
+    List,
+    NotRequired,
+    Optional,
+    Callable,
+    Coroutine,
+    Any,
+    TypedDict,
+)
 from logging import getLogger
 import json
 import struct
@@ -18,11 +28,33 @@ class OpCode(IntEnum):
     PONG = 4
 
 
+class AccessTokenData(TypedDict):
+    access_token: str
+    expires_at: int
+
+
+class Config(TypedDict):
+    access_token: NotRequired[AccessTokenData]
+    client_id: int
+    client_secret: str
+    client_token: str
+
+
 class Client:
-    def __init__(self, client_id: int):
-        self.client_id = client_id
+    def __init__(self, config: Config):
         self._reader: Optional[asyncio.StreamReader] = None
         self._writer: Optional[asyncio.StreamWriter] = None
+        self.events: DefaultDict[
+            str, List[Callable[..., Coroutine[Any, Any, Any]]]
+        ] = defaultdict(list)
+        self.config = config
+
+    def event(self, name: str):
+        def decorator(func):
+            self.events[name].append(func)
+            return func
+
+        return decorator
 
     async def read_output(self):
         if not self._reader:
@@ -31,6 +63,7 @@ class Client:
         _, length = struct.unpack("<II", preamble[:8])
         data = await self._reader.read(length)
         payload = json.loads(data.decode("utf-8"))
+        print(payload)
         return payload
 
     async def send_data(self, op: int, payload):
@@ -71,7 +104,8 @@ class Client:
             raise RuntimeError("Not connected to IPC")
 
         await self.send_data(
-            OpCode.HANDSHAKE, {"v": 1, "client_id": str(self.client_id)}
+            OpCode.HANDSHAKE, {"v": 1, "client_id": str(self.config["client_id"])}
         )
         data = await self.read_output()
-        print(data)
+        if data.get("message") == "Invalid Client ID":
+            raise RuntimeError("Invalid client ID")
