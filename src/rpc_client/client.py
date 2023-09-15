@@ -51,7 +51,7 @@ class Client:
 
     def event(self, name: str):
         def decorator(func):
-            self.events[name].append(func)
+            self.events[name.lower()].append(func)
             return func
 
         return decorator
@@ -64,6 +64,11 @@ class Client:
         data = await self._reader.read(length)
         payload = json.loads(data.decode("utf-8"))
         print(payload)
+
+        if self.events.get(payload["evt"].lower()):
+            for func in self.events[payload["evt"].lower()]:
+                asyncio.create_task(func(payload["data"]))
+
         return payload
 
     async def send_data(self, op: int, payload):
