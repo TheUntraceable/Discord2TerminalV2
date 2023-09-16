@@ -143,7 +143,7 @@ class Client:
             self._internal_buffer += data
             return
         logger.debug(f"Received payload: {payload}")
-        if payload.get("evt") == "DISPATCH":
+        if payload.get("evt"):
             if self.events.get(payload["evt"].lower()):
                 for func in self.events[payload["evt"].lower()]:
                     asyncio.create_task(func(payload["data"]))
