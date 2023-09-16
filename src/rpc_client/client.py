@@ -60,6 +60,7 @@ class Client:
         self.access_token: Optional[str] = config.get("access_token", {}).get(
             "access_token"
         )
+        self._internal_buffer: bytes = bytearray()
 
     def event(self, name: str):
         def decorator(func):
@@ -121,11 +122,20 @@ class Client:
         logger.info(f"Authenticated as {self.user['username']}")
 
     def on_event(self, data):
-        if not data:
+        if not data or not self._reader:
             return
-        data = data[8:]
-        logger.debug(f"Received preprocessed data: {data}")
-        payload = json.loads(data.decode("utf-8"))
+        try:
+            if self._internal_buffer:
+                data = self._internal_buffer + data
+                self._internal_buffer = bytearray()
+            _, length = struct.unpack("<II", data[:8])
+            if len(data) < length + 8:
+                self._internal_buffer += data
+                return
+            payload = json.loads(data[8:].decode("utf-8"))
+        except json.JSONDecodeError:
+            self._internal_buffer += data
+            return
         logger.debug(f"Received payload: {payload}")
         if payload.get("evt") == "DISPATCH":
             if self.events.get(payload["evt"].lower()):
@@ -190,7 +200,7 @@ class Client:
             path = self.get_ipc_path(i)
             try:
                 self._reader, self._writer = await asyncio.open_unix_connection(
-                    path, limit=1024*1024*10
+                    path, limit=1024 * 1024 * 10
                 )
             except (FileNotFoundError, ConnectionRefusedError):
                 continue
@@ -249,4 +259,11 @@ class Client:
         if data.get("message") == "Invalid Client ID":
             raise RuntimeError("Invalid client ID")
 
-        self._reader.feed_data = self.on_event
+        async def read_from_stream():
+            while True:
+                if not self._reader:
+                    break
+                data = await self._reader.read(1024 * 1024)
+                self.on_event(data)
+
+        asyncio.create_task(read_from_stream())
