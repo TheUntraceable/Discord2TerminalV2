@@ -17,6 +17,52 @@ with open("config.json", "r") as f:
 client = Client(config)
 
 
+async def prompt():
+    while True:
+        message = input("> ")
+
+
+@client.event("MESSAGE_CREATE")
+async def on_message(data):
+    message = data["message"]
+    message["channel_id"] = data["channel_id"]
+    await client.messages.insert_one({
+        "message": message,
+        "deleted": False,
+        "edits": [],
+    })
+
+
+@client.event("MESSAGE_UPDATE")
+async def on_message_update(data):
+    message = data["message"]
+    message["channel_id"] = data["channel_id"]
+    stored_message = await client.messages.find_one({
+        "message.id": message["id"],
+    })
+    if not stored_message:
+        return
+
+    await client.messages.update_one({
+        "message.id": message["id"],
+    }, {
+        "$push": {
+            "edits": message,
+        }
+    })
+
+
+@client.event("MESSAGE_DELETE")
+async def on_message_delete(data):
+    await client.messages.update_one({
+        "message.id": data["message"]["id"],
+    }, {
+        "$set": {
+            "deleted": True,
+        }
+    })
+
+
 async def main():
     await client.connect()
     if not client.access_token:
@@ -37,6 +83,7 @@ async def main():
             await client.subscribe(
                 "MESSAGE_DELETE", {"channel_id": partial_channel["id"]}
             )
+    asyncio.create_task(prompt())
 
 
 if __name__ == "__main__":
