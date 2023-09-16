@@ -132,7 +132,7 @@ class Client:
             if len(data) < length + 8:
                 self._internal_buffer += data
                 return
-            payload = json.loads(data[8:].decode("utf-8"))
+            payload = json.loads(data[8:].decode("latin"))
         except json.JSONDecodeError:
             self._internal_buffer += data
             return

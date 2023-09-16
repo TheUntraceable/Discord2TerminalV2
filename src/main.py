@@ -28,8 +28,15 @@ async def main():
         guild = await client.get_guild(guild["id"])
         channels = await client.get_channels(guild["id"])
         for partial_channel in channels:
-            channel = await client.get_channel(partial_channel["id"])
-            print(channel)
+            await client.subscribe(
+                "MESSAGE_CREATE", {"channel_id": partial_channel["id"]}
+            )
+            await client.subscribe(
+                "MESSAGE_UPDATE", {"channel_id": partial_channel["id"]}
+            )
+            await client.subscribe(
+                "MESSAGE_DELETE", {"channel_id": partial_channel["id"]}
+            )
 
 
 if __name__ == "__main__":
