@@ -18,14 +18,14 @@ No. There is no self-botting going on, you're the Discord Client's unix socket t
 ## Todo List
 
 - Implement RPC Client
-  - [ ] Connecting to the socket
-  - [ ] "Logging in"
-  - [ ] Reading commands/events
-  - [ ] Sending commands/events
+  - [x] Connecting to the socket
+  - [x] "Logging in"
+  - [x] Reading commands/events
+  - [x] Sending commands/events
   - [ ] Handling errors
 - Implement Discord Client
-  - [ ] Subscribing to events
-  - [ ] Reading events
+  - [x] Subscribing to events
+  - [x] Reading events
   - [ ] Saving Data
 - Implement Webhook API
   - [ ] Registering webhooks
