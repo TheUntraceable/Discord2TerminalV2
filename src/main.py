@@ -3,6 +3,7 @@ import json
 from logging import getLogger, FileHandler, Formatter
 from typing import Any
 from prompt_toolkit import PromptSession
+from halo import Halo
 from prompt_toolkit.patch_stdout import patch_stdout
 from rpc_client import Client
 
@@ -76,9 +77,13 @@ async def main():
         await client.authorize()
     else:
         await client.authenticate(client.access_token)
+    fetch_guilds_spinner = Halo(text="Fetching guilds...", spinner="dots")
+    fetch_guilds_spinner.start()
     guilds = await client.get_guilds()
+    fetch_guilds_spinner.succeed(f"Fetched {len(guilds)} guilds")
+    fetching_channels_spinner = Halo(text="Subscribing to events...", spinner="dots")
+    fetching_channels_spinner.start()
     for guild in guilds:
-        guild = await client.get_guild(guild["id"])
         channels = await client.get_channels(guild["id"])
         for partial_channel in channels:
             await client.subscribe(
@@ -90,6 +95,9 @@ async def main():
             await client.subscribe(
                 "MESSAGE_DELETE", {"channel_id": partial_channel["id"]}
             )
+
+    fetching_channels_spinner.succeed("Subscribed to all events!")
+
     with patch_stdout():
         try:
             await get_commands()
