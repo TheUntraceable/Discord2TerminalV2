@@ -62,6 +62,24 @@ class Client:
         self._internal_buffer: bytes = bytearray()
         self.guilds: Dict[int, GuildData] = {}
         self.channels: Dict[int, ChannelData] = {}
+        self.terminal_commands: Dict[str, Callable[..., Coroutine[Any, Any, Any]]] = {}
+        self.prefix_commands: Dict[str, Callable[..., Coroutine[Any, Any, Any]]] = {}
+
+    def terminal_command(self, name: str):
+        def decorator(func):
+            self.terminal_commands[name.lower()] = func
+            logger.info(f"Registered terminal command {name}")
+            return func
+
+        return decorator
+
+    def prefix_command(self, name: str):
+        def decorator(func):
+            self.prefix_commands[name.lower()] = func
+            logger.info(f"Registered prefix command {name}")
+            return func
+
+        return decorator
 
     def event(self, name: str):
         def decorator(func):

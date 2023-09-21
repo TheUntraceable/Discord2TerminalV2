@@ -53,7 +53,7 @@ async def on_message_update(data):
 
 @client.event("MESSAGE_DELETE")
 async def on_message_delete(data):
-    stored_message = messages.get(data['message']["id"])
+    stored_message = messages.get(data["message"]["id"])
 
     if not stored_message:
         return
@@ -103,6 +103,7 @@ async def main():
             await get_commands()
         except (EOFError, KeyboardInterrupt):
             exit(0)
+
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
