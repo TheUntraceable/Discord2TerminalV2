@@ -2,3 +2,4 @@ aiohttp
 discord-typings
 colorama
 prompt_toolkit
+progressbar2
