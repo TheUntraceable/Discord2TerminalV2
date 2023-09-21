@@ -2,6 +2,8 @@ import asyncio
 import json
 from logging import getLogger, FileHandler, Formatter
 from typing import Any
+from prompt_toolkit import PromptSession
+from prompt_toolkit.patch_stdout import patch_stdout
 from rpc_client import Client
 
 logger = getLogger("rpc.client")
@@ -50,12 +52,22 @@ async def on_message_update(data):
 
 @client.event("MESSAGE_DELETE")
 async def on_message_delete(data):
-    stored_message = messages.get(data["id"])
+    stored_message = messages.get(data['message']["id"])
 
     if not stored_message:
         return
 
     stored_message["deleted"] = True
+
+
+async def get_commands():
+    session = PromptSession("> ")
+    while True:
+        try:
+            message = await session.prompt_async()
+            print(message)
+        except (EOFError, KeyboardInterrupt):
+            break
 
 
 async def main():
@@ -78,7 +90,11 @@ async def main():
             await client.subscribe(
                 "MESSAGE_DELETE", {"channel_id": partial_channel["id"]}
             )
-
+    with patch_stdout():
+        try:
+            await get_commands()
+        except (EOFError, KeyboardInterrupt):
+            exit(0)
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
