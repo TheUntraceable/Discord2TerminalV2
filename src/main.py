@@ -1,6 +1,7 @@
 import asyncio
 import json
 from logging import getLogger, FileHandler, Formatter
+from typing import Any
 from rpc_client import Client
 
 logger = getLogger("rpc.client")
@@ -15,52 +16,46 @@ with open("config.json", "r") as f:
     config = json.load(f)
 
 client = Client(config)
-
-
-async def prompt():
-    while True:
-        message = input("> ")
+messages: dict[str, Any] = {}
 
 
 @client.event("MESSAGE_CREATE")
 async def on_message(data):
     message = data["message"]
     message["channel_id"] = data["channel_id"]
-    await client.messages.insert_one({
-        "message": message,
+    messages[message["id"]] = {
+        "current_message": message,  # The current message
         "deleted": False,
-        "edits": [],
-    })
+        "edits": [],  # A list of edited messages
+    }
 
 
 @client.event("MESSAGE_UPDATE")
 async def on_message_update(data):
     message = data["message"]
     message["channel_id"] = data["channel_id"]
-    stored_message = await client.messages.find_one({
-        "message.id": message["id"],
-    })
+    stored_message = messages.get(message["id"])
+
     if not stored_message:
+        messages[message["id"]] = {
+            "current_message": message,
+            "deleted": False,
+            "edits": [],
+        }
         return
 
-    await client.messages.update_one({
-        "message.id": message["id"],
-    }, {
-        "$push": {
-            "edits": message,
-        }
-    })
+    stored_message["edits"].append(stored_message["current_message"])
+    stored_message["current_message"] = message
 
 
 @client.event("MESSAGE_DELETE")
 async def on_message_delete(data):
-    await client.messages.update_one({
-        "message.id": data["message"]["id"],
-    }, {
-        "$set": {
-            "deleted": True,
-        }
-    })
+    stored_message = messages.get(data["id"])
+
+    if not stored_message:
+        return
+
+    stored_message["deleted"] = True
 
 
 async def main():
@@ -83,7 +78,6 @@ async def main():
             await client.subscribe(
                 "MESSAGE_DELETE", {"channel_id": partial_channel["id"]}
             )
-    asyncio.create_task(prompt())
 
 
 if __name__ == "__main__":

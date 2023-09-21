@@ -18,9 +18,7 @@ import json
 import aiohttp
 import struct
 from enum import IntEnum
-
 from discord_typings import ApplicationData, ChannelData, GuildData, UserData
-from motor.motor_asyncio import AsyncIOMotorClient
 
 
 logger = getLogger("rpc.client")
@@ -45,7 +43,6 @@ class Config(TypedDict):
     client_id: int
     client_secret: str
     client_token: str
-    mongo_uri: str
 
 
 class Client:
@@ -63,10 +60,8 @@ class Client:
             "access_token"
         )
         self._internal_buffer: bytes = bytearray()
-        database = AsyncIOMotorClient(config["mongo_uri"])["discord2terminal"]
         self.guilds: Dict[int, GuildData] = {}
         self.channels: Dict[int, ChannelData] = {}
-        self.messages = database["messages"]
 
     def event(self, name: str):
         def decorator(func):
