@@ -190,7 +190,22 @@ class Client:
         await self._writer.drain()
         logger.debug(f"Sent payload: {payload}")
 
-    async def command(self, cmd: str, args: Dict[str, Any] = None):
+    def channel_from_name(self, channel_name: str):
+        for channel in self.channels.values():
+            if channel["name"] == channel_name:
+                return channel
+
+    def get_channel_messages(self, channel_id: str, messages: list[dict]):
+        for message in messages:
+            if message["current_"]["channel_id"] == channel_id:
+                yield message
+
+    def guild_from_name(self, guild_name: str):
+        for guild in self.guilds.values():
+            if guild["name"] == guild_name:
+                return guild
+
+    async def command(self, cmd: str, args: Optional[Dict[str, Any]] = None):
         if args is None:
             args = {}
         if not self._writer:
@@ -232,18 +247,26 @@ class Client:
 
     async def get_guilds(self):
         data = await self.command("GET_GUILDS")
-        return data["data"]["guilds"]
+        guilds = data["data"]["guilds"]
+        for guild in guilds:
+            self.guilds[guild["id"]] = guild
+        return guilds
 
-    async def get_guild(self, guild_id: int):
+    async def get_guild(self, guild_id: str):
         data = await self.command("GET_GUILD", {"guild_id": guild_id})
+        self.guilds[guild_id] = data["data"]
         return data["data"]
 
-    async def get_channels(self, guild_id: int):
+    async def get_channels(self, guild_id: str):
         data = await self.command("GET_CHANNELS", {"guild_id": guild_id})
+        channels = data["data"]["channels"]
+        for channel in channels:
+            self.channels[channel["id"]] = channel
         return data["data"]["channels"]
 
-    async def get_channel(self, channel_id: int):
+    async def get_channel(self, channel_id: str):
         data = await self.command("GET_CHANNEL", {"channel_id": channel_id})
+        self.channels[channel_id] = data["data"]
         return data["data"]
 
     async def subscribe(self, event_name: str, args: Dict[str, Any]):
@@ -280,7 +303,7 @@ class Client:
             raise RuntimeError("Invalid client ID")
 
         async def read_from_stream():
-            while not not self._reader:
+            while self._reader:
                 data = await self._reader.read(1024 * 1024)
                 self.on_event(data)
 

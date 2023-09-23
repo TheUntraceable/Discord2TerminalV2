@@ -5,7 +5,7 @@ from time import time
 from typing import Any
 import rich
 from prompt_toolkit import PromptSession
-from prompt_toolkit.completion import FuzzyWordCompleter
+from prompt_toolkit.completion import FuzzyWordCompleter, WordCompleter
 from halo import Halo
 from prompt_toolkit.patch_stdout import patch_stdout
 from progressbar import ProgressBar, PercentageLabelBar, AdaptiveETA, Timer
@@ -35,7 +35,6 @@ async def on_message(data):
         "deleted": False,
         "edits": [],  # A list of edited messages
     }
-    print_message([message])
 
 
 @client.event("MESSAGE_UPDATE")
@@ -72,17 +71,16 @@ async def get_commands(session: PromptSession):
             if command not in client.terminal_commands:
                 print("Invalid command")
                 continue
-            await client.terminal_commands[command](*args)
+            await client.terminal_commands[command](session, *args)
         except (EOFError, KeyboardInterrupt):
             break
 
 
-def print_message(messages: list):
+def print_messages(messages: list):
     previous_author_id: int | None = None
     for message in messages:
         if previous_author_id != message["author"]["id"]:
             previous_author_id = message["author"]["id"]
-            # formatted_text = f"[{hex_color}]{text}[/{hex_color}]"
             rich.print(
                 f"[{message.get('author_color', '#99AAB5')}]{message['author']['username']}[/{message.get('author_color', '#99AAB5')}]: {message['content']}"
             )
@@ -93,6 +91,34 @@ def print_message(messages: list):
 @client.terminal_command("echo")
 async def echo(*args):
     print(" ".join(args))
+
+
+@client.terminal_command("read")
+async def read_channel(session, *args):
+    guild_names = [guild["name"] for guild in client.guilds.values()]
+    guild_names_completer = WordCompleter(guild_names)
+    guild_name = await session.prompt_async(
+        "Guild name: ", completer=guild_names_completer
+    )
+    if guild_name not in guild_names:
+        print("Invalid guild name")
+        return
+    channel_names = [
+        channel["name"] for channel in client.guilds[guild_name]["channels"].values()
+    ]
+    channel_name = await session.prompt_async("Channel name: ")
+    if channel_name not in channel_names:
+        print("Invalid channel name")
+        return
+    channel = client.channel_from_name(channel_name)
+    if not channel:
+        print("Invalid channel")
+        return
+    if not channel.get("messages"):
+        channel = await client.get_channel(channel["id"])
+    print_messages(channel["messages"])
+    # channel_messages = messages[]
+
 
 
 async def main():
