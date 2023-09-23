@@ -156,10 +156,9 @@ class Client:
             self._internal_buffer += data
             return
         logger.debug(f"Received payload: {payload}")
-        if payload.get("evt"):
-            if self.events.get(payload["evt"].lower()):
-                for func in self.events[payload["evt"].lower()]:
-                    asyncio.create_task(func(payload["data"]))
+        if payload.get("evt") and self.events.get(payload["evt"].lower()):
+            for func in self.events[payload["evt"].lower()]:
+                asyncio.create_task(func(payload["data"]))
         if self._expected.get(payload.get("nonce")):
             self._expected[payload["nonce"]].set_result(payload)
             del self._expected[payload["nonce"]]
@@ -191,7 +190,9 @@ class Client:
         await self._writer.drain()
         logger.debug(f"Sent payload: {payload}")
 
-    async def command(self, cmd: str, args: Dict[str, Any] = {}):
+    async def command(self, cmd: str, args: Dict[str, Any] = None):
+        if args is None:
+            args = {}
         if not self._writer:
             raise RuntimeError("Not connected to IPC")
         nonce = os.urandom(32).hex()
@@ -279,9 +280,7 @@ class Client:
             raise RuntimeError("Invalid client ID")
 
         async def read_from_stream():
-            while True:
-                if not self._reader:
-                    break
+            while not not self._reader:
                 data = await self._reader.read(1024 * 1024)
                 self.on_event(data)
 
