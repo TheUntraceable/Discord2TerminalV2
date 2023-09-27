@@ -18,7 +18,13 @@ import json
 import aiohttp
 import struct
 from enum import IntEnum
-from discord_typings import ApplicationData, ChannelData, GuildData, UserData
+from discord_typings import (
+    ApplicationData,
+    ChannelData,
+    GuildData,
+    PartialChannelData,
+    UserData,
+)
 
 
 logger = getLogger("rpc.client")
@@ -60,8 +66,9 @@ class Client:
             "access_token"
         )
         self._internal_buffer: bytes = bytearray()
-        self.guilds: Dict[int, GuildData] = {}
-        self.channels: Dict[int, ChannelData] = {}
+        self.guilds: Dict[str, GuildData] = {}
+        self.partial_channels: Dict[str, PartialChannelData] = {}
+        self.channels: Dict[str, ChannelData] = {}
         self.terminal_commands: Dict[str, Callable[..., Coroutine[Any, Any, Any]]] = {}
         self.prefix_commands: Dict[str, Callable[..., Coroutine[Any, Any, Any]]] = {}
 
@@ -191,7 +198,7 @@ class Client:
         logger.debug(f"Sent payload: {payload}")
 
     def channel_from_name(self, channel_name: str):
-        for channel in self.channels.values():
+        for channel in self.partial_channels.values():
             if channel["name"] == channel_name:
                 return channel
 
@@ -261,7 +268,7 @@ class Client:
         data = await self.command("GET_CHANNELS", {"guild_id": guild_id})
         channels = data["data"]["channels"]
         for channel in channels:
-            self.channels[channel["id"]] = channel
+            self.partial_channels[channel["id"]] = channel
         return data["data"]["channels"]
 
     async def get_channel(self, channel_id: str):
@@ -304,7 +311,7 @@ class Client:
 
         async def read_from_stream():
             while self._reader:
-                data = await self._reader.read(1024 * 1024)
+                data = await self._reader.read()
                 self.on_event(data)
 
         asyncio.create_task(read_from_stream())

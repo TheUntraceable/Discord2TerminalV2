@@ -120,7 +120,6 @@ async def read_channel(session, *args):
     # channel_messages = messages[]
 
 
-
 async def main():
     await client.connect()
     if (
