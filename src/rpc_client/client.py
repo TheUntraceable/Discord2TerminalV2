@@ -153,7 +153,6 @@ class Client:
         try:
             if self._internal_buffer:
                 data = self._internal_buffer + data
-                self._internal_buffer = bytearray()
             _, length = struct.unpack("<II", data[:8])
             if len(data) < length + 8:
                 self._internal_buffer += data
@@ -162,6 +161,11 @@ class Client:
         except json.JSONDecodeError:
             self._internal_buffer += data
             return
+        except struct.error:
+            self._internal_buffer += data
+            return
+        else:
+            self._internal_buffer = bytearray()
         logger.debug(f"Received payload: {payload}")
         if payload.get("evt") and self.events.get(payload["evt"].lower()):
             for func in self.events[payload["evt"].lower()]:
