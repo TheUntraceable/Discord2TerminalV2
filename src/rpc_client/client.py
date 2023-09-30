@@ -16,6 +16,7 @@ from typing import (
 from logging import getLogger
 import json
 import aiohttp
+from halo import Halo
 import struct
 from enum import IntEnum
 from discord_typings import (
@@ -257,10 +258,13 @@ class Client:
         await self.handshake()
 
     async def get_guilds(self):
+        spinner = Halo(text="Fetching guilds...", spinner="dots")
+        spinner.start()
         data = await self.command("GET_GUILDS")
         guilds = data["data"]["guilds"]
         for guild in guilds:
             self.guilds[guild["id"]] = guild
+        spinner.succeed(f"Fetched {len(guilds)} guilds")
         return guilds
 
     async def get_guild(self, guild_id: str):

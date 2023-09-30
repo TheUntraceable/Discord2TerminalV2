@@ -130,13 +130,10 @@ async def main():
     else:
         await client.authenticate(client.access_token)
 
-    fetch_guilds_spinner = Halo(text="Fetching guilds...", spinner="dots")
     fetching_channels_spinner = Halo(text="Fetching channels...", spinner="dots")
     fetched_channels = []
 
-    fetch_guilds_spinner.start()
     guilds = await client.get_guilds()
-    fetch_guilds_spinner.succeed(f"Fetched {len(guilds)} guilds")
 
     fetching_channels_spinner.start()
     for guild in guilds:
@@ -164,6 +161,7 @@ async def main():
 
     word_completer = FuzzyWordCompleter(list(client.terminal_commands.keys()))
     session = PromptSession("> ", completer=word_completer, complete_while_typing=True)
+
     with patch_stdout(raw=True):
         try:
             await get_commands(session)
