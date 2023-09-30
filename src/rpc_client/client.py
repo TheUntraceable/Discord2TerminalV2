@@ -311,7 +311,7 @@ class Client:
 
         async def read_from_stream():
             while self._reader:
-                data = await self._reader.read()
+                data = await self._reader.read(1024*1024)
                 self.on_event(data)
 
         asyncio.create_task(read_from_stream())
